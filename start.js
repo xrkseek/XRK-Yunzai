@@ -291,6 +291,7 @@ class ServerManager extends BaseManager {
   }
 
   async startServerMode(port) {
+    // 菜单父进程已 ensure 时设 XRK_SKIP_CONFIG_CHECK=1，避免「配置已就绪」打两遍
     const skipConfigCheck = process.env.XRK_SKIP_CONFIG_CHECK === '1';
     if (!skipConfigCheck) {
       await this.logger.log(`启动葵崽服务器，端口: ${port}`);
@@ -318,8 +319,8 @@ class ServerManager extends BaseManager {
         if (restartCount > 0) {
           await this.logger.log(`重启进程 (尝试 ${restartCount + 1}/${CONFIG.MAX_RESTARTS})`);
         }
-        
-        const exitCode = await this.runServerProcess(port, restartCount > 0);
+        // 父进程已 ensure：子进程始终跳过，勿与首次拉起再 ensure 重复
+        const exitCode = await this.runServerProcess(port, true);
         if (exitCode === 0 || exitCode === 255) {
           await this.logger.log('正常退出');
           return;
@@ -342,6 +343,7 @@ class ServerManager extends BaseManager {
   async runServerProcess(port, skipConfigCheck = false) {
     const nodeArgs = getNodeArgs();
     // 经 app.js server：每次拉起（含 Ctrl+C 重启）先查依赖，再进 start.js
+    // skipConfigCheck：菜单父进程已 ensurePortConfig 时传 true，子进程不再打「配置已就绪」
     const entryScript = resolveProjectPath(APP_ENTRY_REL);
     const startArgs = [...nodeArgs, entryScript, 'server', port.toString()];
     const cleanEnv = {

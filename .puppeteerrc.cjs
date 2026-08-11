@@ -131,22 +131,11 @@ if (!executablePath) {
   }
 }
 
-// 检查是否应该跳过下载
+// 有系统浏览器或非常见下载架构时跳过 Chromium 下载（不打 Found 日志，避免与引导/菜单重复）
 const currentArch = arch()
 if (executablePath || 
     ["arm64", "aarch64", "arm"].includes(currentArch) ||
     (platform() === 'linux' && ["armv7l", "armv6l"].includes(currentArch))) {
-  
-  const logger = (typeof global !== 'undefined' && global.logger) || 
-                 (typeof window !== 'undefined' && window.logger) || 
-                 console
-  
-  if (executablePath) {
-    logger.info(`[Browser] Found: ${executablePath}`)
-  } else {
-    logger.info(`[Browser] Skipping download for architecture: ${currentArch}`)
-  }
-  
   skipDownload = true
 }
 
