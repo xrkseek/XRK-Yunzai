@@ -6,6 +6,6 @@ ai-workspace/*
 !ai/
 ai/*
 !ai/.gitkeep
-fonts/
-!fonts
+# 截图 HTML 用本地字体（connect 欢迎图 / 插件加载报告）
+!fonts/
 !fonts/Genshin.ttf
