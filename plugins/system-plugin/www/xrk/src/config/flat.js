@@ -66,6 +66,8 @@ export function normalizeFlatFields(flat) {
     }
   }
 
+  list = list.filter((f) => !f.hidden);
+
   const paths = list.map((f) => f.path);
   /** @type {Map<string, { label: string, description: string }>} */
   const containers = new Map();
@@ -142,6 +144,8 @@ function normalizeOneField(raw) {
     step: meta.step ?? raw.step,
     placeholder: meta.placeholder || raw.placeholder || '',
     sensitive: Boolean(meta.sensitive || component === 'inputpassword'),
+    readonly: Boolean(meta.readonly ?? raw.readonly),
+    hidden: Boolean(meta.hidden ?? raw.hidden),
     layout: meta.layout || raw.layout,
     span: meta.span || raw.span,
     example: Object.prototype.hasOwnProperty.call(meta, 'example')
@@ -419,7 +423,8 @@ export function resolveFieldControl(field = {}) {
   if (c === 'switch' || t === 'boolean') return 'switch';
 
   // 多选必须先于 hasChoiceOptions：否则带 enum 的 MultiSelect 会被误判成单选 Select
-  if (c === 'multiselect') return 'multiselect';
+  // 无选项时退化为 Tags，避免空下拉
+  if (c === 'multiselect') return hasChoiceOptions(field) ? 'multiselect' : 'tags';
   if (c === 'tags') return 'tags';
   if (t === 'array' && c !== 'arrayform') {
     return hasChoiceOptions(field) ? 'multiselect' : 'tags';
@@ -430,7 +435,7 @@ export function resolveFieldControl(field = {}) {
   if (c === 'number' || c === 'inputnumber' || c === 'slider' || c === 'range' || t === 'number') {
     return 'number';
   }
-  if (c === 'inputpassword' || c === 'password') return 'password';
+  if (c === 'inputpassword' || c === 'password' || field.sensitive) return 'password';
   if (c === 'arrayform' || t === 'array<object>') return 'array';
   if (c === 'kv') return 'kv';
   if (c === 'keyedobject' || c === 'keyed' || t === 'map') return 'keyed';

@@ -9,6 +9,7 @@ import XrkIcon from '@/components/XrkIcon.vue';
 const props = defineProps({
   modelValue: { type: [Array, String], default: () => [] },
   placeholder: { type: String, default: '输入内容' },
+  disabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -28,9 +29,10 @@ const tags = computed(() => {
 });
 
 const isEditing = computed(() => editingIndex.value >= 0);
-const canSubmit = computed(() => Boolean(draft.value.trim()));
+const canSubmit = computed(() => Boolean(draft.value.trim()) && !props.disabled);
 
 function commit(next) {
+  if (props.disabled) return;
   emit('update:modelValue', next);
 }
 
@@ -45,6 +47,7 @@ async function focusInput() {
 }
 
 function startEdit(i) {
+  if (props.disabled) return;
   editingIndex.value = i;
   draft.value = tags.value[i] || '';
   void focusInput();
@@ -53,6 +56,7 @@ function startEdit(i) {
 function removeAt(i, e) {
   e?.stopPropagation?.();
   e?.preventDefault?.();
+  if (props.disabled) return;
   if (editingIndex.value === i) resetDraft();
   else if (editingIndex.value > i) editingIndex.value -= 1;
   commit(tags.value.filter((_, idx) => idx !== i));
@@ -96,7 +100,7 @@ function onKeydown(e) {
 </script>
 
 <template>
-  <div class="tags-ed">
+  <div class="tags-ed" :data-disabled="disabled ? '1' : undefined">
     <div v-if="tags.length" class="tags-list" role="list">
       <button
         v-for="(t, i) in tags"
@@ -105,11 +109,13 @@ function onKeydown(e) {
         class="tags-chip"
         :class="{ editing: editingIndex === i }"
         role="listitem"
-        :title="editingIndex === i ? '正在编辑' : '点击编辑'"
+        :disabled="disabled"
+        :title="disabled ? t : editingIndex === i ? '正在编辑' : '点击编辑'"
         @click="startEdit(i)"
       >
         <span class="tags-chip-text">{{ t }}</span>
         <span
+          v-if="!disabled"
           class="tags-chip-x"
           role="button"
           tabindex="0"
@@ -124,7 +130,7 @@ function onKeydown(e) {
     </div>
     <p v-else class="tags-empty">暂无项 · 填写后点添加；已有项点芯片可改</p>
 
-    <div class="tags-add" :class="{ 'is-editing': isEditing }">
+    <div v-if="!disabled" class="tags-add" :class="{ 'is-editing': isEditing }">
       <NInput
         ref="inputRef"
         v-model:value="draft"

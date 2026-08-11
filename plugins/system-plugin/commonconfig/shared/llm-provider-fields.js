@@ -29,18 +29,18 @@ const PROXY_FIELDS = {
 const HEADERS_FIELD = {
   type: 'object',
   label: '额外请求头',
-  description: '合并到 HTTP 请求头；简单键值用「键值」模式，复杂结构用 JSON',
-  component: 'SubForm',
+  description: '合并到 HTTP 请求头；键值对编辑，值可写 JSON 字面量',
+  component: 'KV',
   layout: 'full',
-  fields: {}
+  default: {},
 };
 const EXTRA_BODY_FIELD = {
   type: 'object',
   label: '额外请求体字段',
-  description: '原样合并到请求体顶层（高级用法）',
-  component: 'SubForm',
+  description: '原样合并到请求体顶层；键值对编辑，值可写 JSON 字面量',
+  component: 'KV',
   layout: 'full',
-  fields: {}
+  default: {},
 };
 
 const RUNTIME_FIELDS = ['timeout', 'enableStream', 'headers', 'extraBody', 'proxy'];

@@ -8,6 +8,7 @@ import { NButton, NInput } from 'naive-ui';
 const props = defineProps({
   modelValue: { type: [Object, Array, String, Number, Boolean, null], default: null },
   rows: { type: Number, default: 0 },
+  readonly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -34,6 +35,7 @@ watch(
 );
 
 function onInput(text) {
+  if (props.readonly) return;
   draft.value = text;
   try {
     const parsed = JSON.parse(text || 'null');
@@ -45,6 +47,7 @@ function onInput(text) {
 }
 
 function format() {
+  if (props.readonly) return;
   try {
     const parsed = JSON.parse(draft.value || 'null');
     draft.value = JSON.stringify(parsed, null, 2);
@@ -57,9 +60,9 @@ function format() {
 </script>
 
 <template>
-  <div class="json-editor">
+  <div class="json-editor" :data-readonly="readonly ? '1' : undefined">
     <div class="json-bar">
-      <NButton size="tiny" secondary @click="format">格式化</NButton>
+      <NButton size="tiny" secondary :disabled="readonly" @click="format">格式化</NButton>
       <span class="status" :class="{ bad: !!error }">{{ error || '语法正确' }}</span>
     </div>
     <NInput
@@ -68,6 +71,7 @@ function format() {
       size="small"
       class="mono"
       :rows="rows || 6"
+      :disabled="readonly"
       :status="error ? 'error' : undefined"
       @update:value="onInput"
     />

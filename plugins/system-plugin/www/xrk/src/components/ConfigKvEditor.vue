@@ -10,6 +10,7 @@ const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
   keyPlaceholder: { type: String, default: '键' },
   valuePlaceholder: { type: String, default: '值' },
+  disabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -26,6 +27,7 @@ const rows = computed(() => {
 });
 
 function commit(nextRows) {
+  if (props.disabled) return;
   const out = {};
   for (const row of nextRows) {
     const k = String(row.key ?? '').trim();
@@ -50,28 +52,32 @@ function commit(nextRows) {
 }
 
 function patchRow(i, patch) {
+  if (props.disabled) return;
   const next = rows.value.map((r, idx) => (idx === i ? { ...r, ...patch } : { ...r }));
   commit(next);
 }
 
 function addRow() {
+  if (props.disabled) return;
   commit([...rows.value, { key: '', value: '' }]);
 }
 
 function removeRow(i) {
+  if (props.disabled) return;
   const next = rows.value.filter((_, idx) => idx !== i);
   commit(next.length ? next : [{ key: '', value: '' }]);
 }
 </script>
 
 <template>
-  <div class="kv-editor">
+  <div class="kv-editor" :data-disabled="disabled ? '1' : undefined">
     <div v-for="(row, i) in rows" :key="i" class="kv-row">
       <NInput
         :value="row.key"
         size="small"
         class="kv-key"
         :placeholder="keyPlaceholder"
+        :disabled="disabled"
         @update:value="(v) => patchRow(i, { key: v })"
       />
       <NInput
@@ -79,13 +85,21 @@ function removeRow(i) {
         size="small"
         class="kv-val"
         :placeholder="valuePlaceholder"
+        :disabled="disabled"
         @update:value="(v) => patchRow(i, { value: v })"
       />
-      <NButton size="tiny" secondary class="kv-del" aria-label="删除行" @click="removeRow(i)">
+      <NButton
+        size="tiny"
+        secondary
+        class="kv-del"
+        aria-label="删除行"
+        :disabled="disabled"
+        @click="removeRow(i)"
+      >
         <XrkIcon name="trash" :size="12" />
       </NButton>
     </div>
-    <NButton size="tiny" secondary class="kv-add" @click="addRow">
+    <NButton size="tiny" secondary class="kv-add" :disabled="disabled" @click="addRow">
       <XrkIcon name="plus" :size="12" />
       添加键值
     </NButton>

@@ -20,6 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue']);
 
 const ctrl = computed(() => props.control || resolveFieldControl(props.schema));
+const isReadonly = computed(() => Boolean(props.schema?.readonly));
 
 const selectOptions = computed(() =>
   normalizeOptions(props.schema?.options || props.schema?.enum || props.schema?.choices)
@@ -27,6 +28,7 @@ const selectOptions = computed(() =>
 );
 
 function set(v) {
+  if (isReadonly.value) return;
   emit('update:modelValue', v);
 }
 
@@ -41,12 +43,13 @@ const multiValue = computed(() => {
 </script>
 
 <template>
-  <div class="cfg-ctrl" :data-ctrl="ctrl">
+  <div class="cfg-ctrl" :data-ctrl="ctrl" :data-readonly="isReadonly ? '1' : undefined">
     <NSwitch
       v-if="ctrl === 'switch'"
       :id="inputId || undefined"
       :value="boolValue"
       size="small"
+      :disabled="isReadonly"
       @update:value="set"
     />
     <NSelect
@@ -56,6 +59,7 @@ const multiValue = computed(() => {
       size="small"
       :options="selectOptions"
       :placeholder="schema.placeholder || '请选择'"
+      :disabled="isReadonly"
       clearable
       filterable
       @update:value="(v) => set(v == null ? '' : v)"
@@ -68,6 +72,7 @@ const multiValue = computed(() => {
       multiple
       :options="selectOptions"
       :placeholder="schema.placeholder || '可多选，可清空'"
+      :disabled="isReadonly"
       clearable
       filterable
       max-tag-count="responsive"
@@ -82,6 +87,7 @@ const multiValue = computed(() => {
       :min="schema.min"
       :max="schema.max"
       :step="schema.step || 1"
+      :disabled="isReadonly"
       class="num"
       @update:value="set"
     />
@@ -93,6 +99,7 @@ const multiValue = computed(() => {
       show-password-on="click"
       size="small"
       :placeholder="schema.placeholder"
+      :disabled="isReadonly"
       @update:value="set"
     />
     <NInput
@@ -103,22 +110,26 @@ const multiValue = computed(() => {
       size="small"
       :rows="3"
       :placeholder="schema.placeholder"
+      :disabled="isReadonly"
       @update:value="set"
     />
     <ConfigTagsEditor
       v-else-if="ctrl === 'tags'"
       :model-value="modelValue"
       :placeholder="schema.placeholder || '输入后点添加'"
+      :disabled="isReadonly"
       @update:model-value="set"
     />
     <ConfigKvEditor
       v-else-if="ctrl === 'kv'"
       :model-value="modelValue && typeof modelValue === 'object' && !Array.isArray(modelValue) ? modelValue : {}"
+      :disabled="isReadonly"
       @update:model-value="set"
     />
     <ConfigJsonEditor
       v-else-if="ctrl === 'json'"
       :model-value="modelValue"
+      :readonly="isReadonly"
       @update:model-value="set"
     />
     <NInput
@@ -127,6 +138,7 @@ const multiValue = computed(() => {
       :value="modelValue == null ? '' : String(modelValue)"
       size="small"
       :placeholder="schema.placeholder"
+      :disabled="isReadonly"
       @update:value="set"
     />
   </div>

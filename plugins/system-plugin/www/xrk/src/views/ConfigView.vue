@@ -197,7 +197,10 @@ function ensureNestedObj(path) {
 }
 
 function nestedFieldEntries(f) {
-  return Object.entries(fieldNestedFields(f));
+  return Object.entries(fieldNestedFields(f)).filter(([, ns]) => {
+    const meta = ns?.meta && typeof ns.meta === 'object' ? ns.meta : {};
+    return !(meta.hidden ?? ns?.hidden);
+  });
 }
 
 function ensureObjValue(path) {

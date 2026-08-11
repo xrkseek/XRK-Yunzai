@@ -11,6 +11,121 @@ import {
   AI_WORKFLOW_TOOLS_FIELDS
 } from './shared/ai-workflow-supplement-fields.js';
 
+/** group.yaml `default` / 群号覆盖共用字段（与 config/default_config/group.yaml 对齐） */
+function buildGroupSettingFields() {
+  return {
+    groupGlobalCD: {
+      type: 'number',
+      label: '群全局冷却(ms)',
+      description: '群内全部指令共享冷却；0 为不限制',
+      min: 0,
+      default: 50,
+      component: 'InputNumber',
+      group: '冷却与触发',
+    },
+    singleCD: {
+      type: 'number',
+      label: '单人冷却(ms)',
+      description: '群内同一用户指令冷却；0 为不限制',
+      min: 0,
+      default: 50,
+      component: 'InputNumber',
+      group: '冷却与触发',
+    },
+    onlyReplyAt: {
+      type: 'number',
+      label: '仅回复 @ / 前缀',
+      description: '控制是否要求 @ 或 botAlias 前缀才会响应',
+      options: [
+        { label: '否（都响应）', value: 0 },
+        { label: '是（仅 @ / 前缀）', value: 1 },
+        { label: '非主人需 @ / 前缀', value: 2 },
+      ],
+      enum: [0, 1, 2],
+      default: 0,
+      component: 'Select',
+      group: '冷却与触发',
+    },
+    botAlias: {
+      type: 'array',
+      label: '机器人别名',
+      description: '用于匹配 @ 或消息前缀',
+      itemType: 'string',
+      default: ['葵崽', '葵葵'],
+      component: 'Tags',
+      group: '冷却与触发',
+    },
+    addPrivate: {
+      type: 'number',
+      label: '允许私聊添加',
+      options: [
+        { label: '禁止', value: 0 },
+        { label: '允许', value: 1 },
+      ],
+      enum: [0, 1],
+      default: 1,
+      component: 'Select',
+      group: '加好友 / 加群',
+    },
+    addLimit: {
+      type: 'number',
+      label: '添加权限',
+      description: '谁可以触发添加相关指令',
+      options: [
+        { label: '所有人', value: 0 },
+        { label: '管理员', value: 1 },
+        { label: '仅主人', value: 2 },
+      ],
+      enum: [0, 1, 2],
+      default: 0,
+      component: 'Select',
+      group: '加好友 / 加群',
+    },
+    addReply: {
+      type: 'boolean',
+      label: '添加时引用回复',
+      description: '添加成功后是否引用原消息回复',
+      default: false,
+      component: 'Switch',
+      group: '加好友 / 加群',
+    },
+    addAt: {
+      type: 'boolean',
+      label: '添加时 @ 对方',
+      default: false,
+      component: 'Switch',
+      group: '加好友 / 加群',
+    },
+    addRecall: {
+      type: 'number',
+      label: '添加回复撤回(秒)',
+      description: '0 表示不撤回',
+      min: 0,
+      default: 0,
+      component: 'InputNumber',
+      group: '加好友 / 加群',
+    },
+    enable: {
+      type: 'array',
+      label: '功能白名单',
+      description: '只启用列出的插件/功能名；空=全部启用',
+      itemType: 'string',
+      default: [],
+      component: 'Tags',
+      group: '功能开关',
+    },
+    disable: {
+      type: 'array',
+      label: '功能黑名单',
+      description: '禁用的插件/功能名',
+      itemType: 'string',
+      default: [],
+      component: 'Tags',
+      group: '功能开关',
+    },
+  };
+}
+
 /**
  * 系统配置管理（与 XRK-AGT 对齐）
  *
@@ -49,7 +164,14 @@ export default class SystemConfig extends ConfigBase {
             debug: { type: 'boolean', label: '调试输出', description: '是否输出调试信息（如错误堆栈）', default: false, component: 'Switch' },
             log_level: { type: 'string', label: '日志等级', description: '全局最低输出级别', enum: ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'mark', 'success', 'tip'], default: 'info', component: 'Select' },
             log_align: { type: 'string', label: '日志头内容', description: '每条日志行首显示的自定义标识', default: 'XRKYZ', component: 'Input' },
-            log_modules: { type: 'object', label: '按模块日志等级', description: '模块名→等级，如 DeviceAPI: debug、PluginsLoader: trace；未列出模块使用 log_level', default: {} },
+            log_modules: {
+              type: 'object',
+              label: '按模块日志等级',
+              description: '模块名→等级，如 DeviceAPI: debug、PluginsLoader: trace；未列出模块使用 log_level',
+              default: {},
+              component: 'KV',
+              layout: 'full',
+            },
             log_max_days: { type: 'number', label: '主日志保留天数', min: 1, default: 3, component: 'InputNumber' },
             log_trace_days: { type: 'number', label: 'trace 日志保留天数', min: 1, default: 1, component: 'InputNumber' },
             log_color: { type: 'string', label: '日志头颜色', description: '日志行首颜色主题', enum: ['default', 'scheme1', 'scheme2', 'scheme3', 'scheme4', 'scheme5', 'scheme6', 'scheme7'], default: 'default', component: 'Select' },
@@ -654,7 +776,8 @@ export default class SystemConfig extends ConfigBase {
                   label: '允许的方法',
                   itemType: 'string',
                   default: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
-                  component: 'MultiSelect'
+                  component: 'MultiSelect',
+                  enum: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
                 },
                 headers: {
                   type: 'array',
@@ -1082,153 +1205,34 @@ export default class SystemConfig extends ConfigBase {
       group: {
         name: 'group',
         displayName: '群组配置',
-        description: '群聊策略：默认冷却时间、仅回复@、机器人别名、功能黑白名单、违禁词与禁言、加群限制等；可为特定群号覆盖默认（键为群号）',
+        description:
+          '群聊默认策略与按群号覆盖（YAML 顶层键为群号，与 default 并列）。违禁词在「添加」插件数据目录，不在本文件。',
         filePath: getConfigPath('group'),
         fileType: 'yaml',
         schema: {
-          meta: {
-            collections: [
-              {
-                name: 'groupOverrides',
-                type: 'keyedObject',
-                label: '群单独配置',
-                description: '为特定群覆盖默认配置，键为群号或标识',
-                basePath: '',
-                excludeKeys: ['default'],
-                keyLabel: '群号',
-                keyPlaceholder: '请输入群号',
-                valueTemplatePath: 'default'
-              }
-            ]
-          },
           fields: {
             default: {
               type: 'object',
               label: '默认配置',
+              description: '所有群的基线；可被下方「群单独配置」覆盖',
               component: 'SubForm',
-              fields: {
-                groupGlobalCD: {
-                  type: 'number',
-                  label: '整体冷却时间',
-                  description: '群聊中所有指令操作冷却时间（毫秒）',
-                  min: 0,
-                  default: 500,
-                  component: 'InputNumber'
-                },
-                singleCD: {
-                  type: 'number',
-                  label: '个人冷却时间',
-                  description: '群聊中个人操作冷却时间（毫秒）',
-                  min: 0,
-                  default: 500,
-                  component: 'InputNumber'
-                },
-                onlyReplyAt: {
-                  type: 'number',
-                  label: '只关注At',
-                  description: '0-否 1-是 2-触发用户非主人只回复@',
-                  enum: [0, 1, 2],
-                  default: 0,
-                  component: 'Select'
-                },
-                botAlias: {
-                  type: 'array',
-                  label: '机器人别名',
-                  itemType: 'string',
-                  default: ['葵崽', '葵葵'],
-                  component: 'Tags'
-                },
-                addPrivate: {
-                  type: 'number',
-                  label: '私聊添加',
-                  enum: [0, 1],
-                  default: 1,
-                  component: 'Select'
-                },
-                enable: {
-                  type: 'array',
-                  label: '功能白名单',
-                  itemType: 'string',
-                  default: [],
-                  component: 'Tags'
-                },
-                disable: {
-                  type: 'array',
-                  label: '功能黑名单',
-                  itemType: 'string',
-                  default: [],
-                  component: 'Tags'
-                },
-                bannedWords: {
-                  type: 'object',
-                  label: '违禁词配置',
-                  component: 'SubForm',
-                  fields: {
-                    enabled: {
-                  type: 'boolean',
-                      label: '启用违禁词检测',
-                  default: true,
-                  component: 'Switch'
-                },
-                    muteTime: {
-                  type: 'number',
-                      label: '禁言时间',
-                  description: '违禁词触发禁言时间（分钟）',
-                  min: 0,
-                  default: 720,
-                  component: 'InputNumber'
-                },
-                    warnOnly: {
-                  type: 'boolean',
-                      label: '仅警告',
-                  description: '是否仅警告不禁言',
-                  default: false,
-                  component: 'Switch'
-                },
-                    exemptRoles: {
-                  type: 'array',
-                      label: '免检角色',
-                  description: '免检角色列表（如：owner, admin）',
-                  itemType: 'string',
-                  default: [],
-                  component: 'Tags'
-                    }
-                  }
-                },
-                addLimit: {
-                  type: 'number',
-                  label: '添加限制',
-                  description: '添加权限：0-所有人 1-管理员 2-仅主人',
-                  enum: [0, 1, 2],
-                  default: 0,
-                  component: 'Select'
-                },
-                addReply: {
-                  type: 'boolean',
-                  label: '添加时回复',
-                  description: '添加时是否回复',
-                  default: true,
-                  component: 'Switch'
-                },
-                addAt: {
-                  type: 'boolean',
-                  label: '添加时@用户',
-                  description: '添加时是否@用户',
-                  default: false,
-                  component: 'Switch'
-                },
-                addRecall: {
-                  type: 'number',
-                  label: '添加回复撤回时间(秒)',
-                  description: '0表示不撤回',
-                  min: 0,
-                  default: 0,
-                  component: 'InputNumber'
-                }
-              }
-            }
-          }
-        }
+              fields: buildGroupSettingFields(),
+            },
+            groupOverrides: {
+              type: 'map',
+              label: '群单独配置',
+              description: '键为群号；保存后写入 YAML 顶层（与 default 并列），不会生成 groupOverrides 节点',
+              component: 'KeyedObject',
+              fields: buildGroupSettingFields(),
+              meta: {
+                keyedSiblings: true,
+                excludeKeys: ['default'],
+                keyLabel: '群号',
+                keyPlaceholder: '例如 123456',
+              },
+            },
+          },
+        },
       },
 
       notice: {
@@ -1244,21 +1248,21 @@ export default class SystemConfig extends ConfigBase {
               label: 'IYUU Token',
               description: 'IYUU 通知服务的 Token，用于推送下载/站点相关通知',
               default: '',
-              component: 'Input'
+              component: 'InputPassword',
             },
             sct: {
               type: 'string',
               label: 'Server酱 SendKey',
               description: 'Server酱（方糖）的 SendKey，用于微信推送',
               default: '',
-              component: 'Input'
+              component: 'InputPassword',
             },
             feishu_webhook: {
               type: 'string',
               label: '飞书机器人 Webhook',
               description: '飞书群机器人的 Webhook URL，用于推送消息到飞书',
               default: '',
-              component: 'Input'
+              component: 'InputPassword',
             }
           }
         }
@@ -1446,7 +1450,7 @@ export default class SystemConfig extends ConfigBase {
                   description: '控制台未勾选时 HTTP 默认工具面；可含 remote-mcp.*；保存后按勾选同步挂载',
                   itemType: 'string',
                   default: [],
-                  component: 'MultiSelect'
+                  component: 'Tags',
                 },
                 remote: {
                   type: 'object',
@@ -1542,7 +1546,7 @@ export default class SystemConfig extends ConfigBase {
                   description: '留空=全部；可填 chat、tools、v3 等',
                   itemType: 'string',
                   default: [],
-                  component: 'MultiSelect'
+                  component: 'Tags',
                 },
                 includeRules: { type: 'boolean', label: '包含 rules', default: true, component: 'Switch' },
                 includeAgentMd: { type: 'boolean', label: '注入工作区助手文件', default: true, component: 'Switch' },
@@ -1555,7 +1559,7 @@ export default class SystemConfig extends ConfigBase {
                   description: '相对工作区根（默认 skills，由 seed 从 agents/skills/standard 复制）',
                   itemType: 'string',
                   default: ['skills'],
-                  component: 'ArrayForm'
+                  component: 'Tags',
                 },
                 ...AGENT_WORKSPACE_SUPPLEMENT_FIELDS
               }
@@ -1618,17 +1622,18 @@ export default class SystemConfig extends ConfigBase {
                   label: '最大浏览器实例数',
                   description: '允许同时存在的浏览器实例上限',
                   min: 1,
-                  default: 5,
+                  default: 15,
                   component: 'InputNumber'
                 },
                 memoryThreshold: {
                   type: 'number',
                   label: '内存阈值（%）',
-                  description: '单实例内存占用超过此比例时触发清理',
+                  description: '单实例内存占用超过此比例时触发清理（当前运行时未使用）',
                   min: 0,
                   max: 100,
                   default: 90,
-                  component: 'InputNumber'
+                  component: 'InputNumber',
+                  meta: { hidden: true },
                 },
                 reserveNewest: {
                   type: 'boolean',
@@ -1735,10 +1740,11 @@ export default class SystemConfig extends ConfigBase {
                 checkDuration: {
                   type: 'number',
                   label: 'CPU 检查持续时间（毫秒）',
-                  description: '需持续超过阈值多久才触发',
+                  description: '需持续超过阈值多久才触发（当前运行时未使用）',
                   min: 1000,
                   default: 30000,
-                  component: 'InputNumber'
+                  component: 'InputNumber',
+                  meta: { hidden: true },
                 }
               }
             },
@@ -1797,8 +1803,9 @@ export default class SystemConfig extends ConfigBase {
             disk: {
               type: 'object',
               label: '磁盘优化',
-              description: '临时文件与日志的清理策略及保留时长',
+              description: '临时文件与日志的清理策略及保留时长（占位，运行时未接入）',
               component: 'SubForm',
+              meta: { hidden: true },
               fields: {
                 enabled: {
                   type: 'boolean',
@@ -1842,6 +1849,7 @@ export default class SystemConfig extends ConfigBase {
               type: 'object',
               label: '网络优化',
               component: 'SubForm',
+              meta: { hidden: true },
               fields: {
                 enabled: {
                   type: 'boolean',
@@ -1868,6 +1876,7 @@ export default class SystemConfig extends ConfigBase {
               type: 'object',
               label: '进程优化',
               component: 'SubForm',
+              meta: { hidden: true },
               fields: {
                 enabled: {
                   type: 'boolean',
@@ -1897,6 +1906,7 @@ export default class SystemConfig extends ConfigBase {
               type: 'object',
               label: '系统级优化',
               component: 'SubForm',
+              meta: { hidden: true },
               fields: {
                 enabled: {
                   type: 'boolean',
