@@ -2,6 +2,7 @@
 Bot.adapter.push(
   new (class OPQBotAdapter {
     id = "QQ"
+    protocol = "opq"
     name = "OPQBot"
     path = this.name
     echo = new Map()

@@ -45,25 +45,48 @@
 1. 适配器构造事件对象 `data`，调用 `Bot.em(eventName, data)`（Bot 内部会先执行 `prepareEvent(data)`）。
 2. `Bot.em` 按事件名逐级 `emit`（如 `message.group.normal` → `message.group` → `message`）。
 3. `plugins/system-plugin/events/message.js` 等监听器订阅 `message`，执行 `EventListener.execute(e)` → `PluginsLoader.deal(e)`。
-4. **device/stdin** 不经过 `Bot.em` 的 message 分支，直接调用 `PluginsLoader.deal(event)`。
-5. `deal(e)` 内：`initEvent(e)`（补全 self_id、bot、event_id）→ 若为 stdin/device 则 `normalizeSpecialEvent(e)`（补全 post_type、message、raw_message 等）→ `dealMsg(e)`（解析 message、设置 e.msg、e.group 占位等）→ `runPluginsAndHandle(e)`。
+4. **device/stdin** 可不经 `Bot.em` 的 message 分支，直接调用 `PluginsLoader.deal(event)`（须自带 `adapter` 字符串与可选 `caps`）。
+5. `deal(e)` 内：`initEvent(e)` → 若 `caps.skipPreCheck`（或兼容 stdin/device）则 `normalizeSpecialEvent` → `dealMsg` → `runPluginsAndHandle`；否则走 `preCheck`。
+
+**Adapter 身份与通道能力**：
+
+| 字段 | 约定 |
+|------|------|
+| `e.adapter` | **恒为字符串 id**（`prepareEvent` 规范化；对象只在 `e.bot.adapter`） |
+| `e.protocol` | 事件命名空间（`onebot` / `device` / 自定义）；`plugin.event: 'onebot.message'` 靠它收窄 |
+| `e.adapter_id` / `e.adapter_name` | 由 `bot.adapter` 补齐 |
+| `e.caps` | 可选能力表，见下；自定义通道设 caps 即可走特判，无需改核心白名单 |
+
+完整 plugin.event 写法见 [EVENTS.md](./EVENTS.md)。
+
+| `e.caps` 标志 | 作用 |
+|---------------|------|
+| `skipPreCheck` | 跳过群 CD/黑名单等前置，直接跑插件（stdin/device） |
+| `bypassLimit` / `bypassBlack` / `bypassOnlyReplyAt` / `bypassPermission` | 对应豁免 |
+| `asMessage` | 无 eventMap 路径时仍匹配 `event: 'message'` 插件 |
+| `replyUnhandled` | 无插件处理时回复提示（device） |
+| `skipOnlineMsg` | connect 时不发上线欢迎（device） |
+
+扩展 `post_type` 路径：`Bot.PluginsLoader.registerEventMap('myproto', ['post_type', 'message_type', 'sub_type'])`。
 
 **事件对象最低要求**（供 loader 与插件兼容）：
 
 | 来源 | 必设字段 | 说明 |
 |------|----------|------|
-| OneBot 消息 | post_type, message_type, sub_type, self_id, user_id, message, raw_message, sender | message 为段数组；loader 据此设 e.isGroup、e.msg、e.group（getter 或占位） |
-| device 消息 | post_type: 'device', event_type: 'message', self_id, user_id, message, raw_message, sender, reply | 可选 group_id、message_type、group_name 以兼容群上下文 |
-| stdin/api | post_type, message_type, sub_type, self_id, user_id, message 或 raw_message, sender, reply | normalizeSpecialEvent 会补全 message/raw_message |
+| OneBot 消息 | post_type, message_type, sub_type, self_id, user_id, message, raw_message, sender；建议 `adapter: this.id` | message 为段数组；loader 据此设 e.isGroup、e.msg、e.group（getter 或占位） |
+| device 消息 | post_type: 'device', adapter: 'device', caps（见上）, event_type: 'message', self_id, user_id, message, raw_message, sender, reply | 可选 group_id、message_type、group_name 以兼容群上下文 |
+| stdin/api | adapter: 'stdin'\|'api', caps（见上）, post_type, message_type, sub_type, self_id, user_id, message 或 raw_message, sender, reply | normalizeSpecialEvent 会补全 message/raw_message |
 
 **说明**：`e.isGroup`、`e.isPrivate` 由 loader 在 `setupEventProps` 中根据 `message_type` 设置，适配器无需重复设置。群消息若缺少 `e.group`（如 getter 抛错或 device 无 bot），loader 会挂占位对象 `{ group_id, group_name }`，避免插件报「未获取到群对象」。
+
+**events 与 adapter 边界**：`plugins/*/events/` 只放 `EventListener`（ListenerLoader 扫描热更）；`plugins/*/adapter/` 只做协议入站。消息插件可用实例字段 `eventSubscribe`（非 events 上的 static）；`subscribeEvent` 首次订阅某类型时才 `Bot.on`。
 
 ### 1.6 适配器事件处理流程（概览）
 
 ```
-外部协议消息 → 适配器解析 → 构造 data（见上表）
+外部协议消息 → 适配器解析 → 构造 data（adapter 字符串 + 可选 caps）
     → Bot.em(name, data) 或 PluginsLoader.deal(data)（device/stdin）
-    → initEvent → normalizeSpecialEvent（若适用）→ dealMsg → runPluginsAndHandle
+    → initEvent → caps.skipPreCheck ? normalize + runPlugins : preCheck → runPlugins
     → 插件执行
 ```
 
@@ -73,6 +96,11 @@
 // plugins/system-plugin/adapter/MyAdapter.js（与 OneBotv11、stdin 同目录）
 Bot.adapter.push(new class MyAdapter {
   id = "MY_PROTOCOL"; name = "MyProtocol"; path = this.name; echo = new Map(); timeout = 60000;
+  async load() {
+    Bot.PluginsLoader?.registerEventMap?.('myproto', ['post_type', 'message_type', 'sub_type']);
+    Bot.wsf[this.path] ||= [];
+    Bot.wsf[this.path].push((conn, req) => this.connect(conn, req));
+  }
   sendFriendMsg(data, msg) { return this.sendApi(data, ws, "send_private_msg", { user_id: data.user_id, message: msg }); }
   sendGroupMsg(data, msg) { return this.sendApi(data, ws, "send_group_msg", { group_id: data.group_id, message: msg }); }
   sendApi(data, ws, action, params = {}) { /* echo + Promise.withResolvers + 超时 */ }
@@ -80,11 +108,15 @@ Bot.adapter.push(new class MyAdapter {
     const self_id = 'my_bot_id';
     if (!Bot.uin.includes(self_id)) Bot.uin.push(self_id);
     Bot.bots[self_id] = { uin: self_id, fl: new Map(), gl: new Map(), adapter: this, sendApi: (a, p) => this.sendApi({ self_id }, ws, a, p) };
-    Bot.em(`connect.${self_id}`, { self_id, bot: Bot.bots[self_id] });
-    ws.on('message', (raw) => { const d = JSON.parse(raw); Bot.em('message.private.friend', { self_id, user_id: d.user_id, message: d.message, bot: Bot.bots[self_id] }); });
+    Bot.em(`connect.${self_id}`, { self_id, bot: Bot.bots[self_id], adapter: this.id });
+    ws.on('message', (raw) => {
+      const d = JSON.parse(raw);
+      Bot.em('message.private.friend', {
+        self_id, user_id: d.user_id, message: d.message, bot: Bot.bots[self_id], adapter: this.id
+      });
+    });
   }
 });
-Bot.wsf['MyProtocol'] = Bot.wsf['MyProtocol'] || []; Bot.wsf['MyProtocol'].push((conn, req) => Bot.adapter.find(a => a.path === 'MyProtocol')?.connect(conn, req));
 ```
 
 ---

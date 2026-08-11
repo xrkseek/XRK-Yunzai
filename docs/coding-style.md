@@ -23,6 +23,7 @@
 | 对象工具 | `ObjectUtils` 类型判断、合并、克隆 | 重复实现 `isPlainObject` 等 |
 | 状态 | **类字段** `cache = new Map()` 或 `init()` | constructor 里 `this.cache = new Map()` |
 | 日志 | `Bot.makeLog(level, msg, tag[, trace])` | `BotUtil.makeLog`；业务中 `logger.*`；空 `catch {}` |
+| **插件 event** | 跨端 `message`；或 `<你的 protocol>.message` / `e.events` 自由名 | 把文档示例名当成框架保留字 |
 | 文件工具 | `BaseTools` + `path-guards` / `InputValidator`（对齐 AGT system-Core） | 业务直连 `fs`；无校验的 `run` |
 | HTTP handler | `(req, res, Bot)`，对象导出 `{ name, routes }` | 在 handler 内 `import Bot` |
 | 工作流目录 | **仅** `plugins/<名>/workflow/` | `streams/`（Loader 不扫描） |
@@ -92,6 +93,19 @@ export default class Demo extends plugin {
 ```
 
 插件 `priority`：**数字越小越先**；`rule[]` 内无独立 priority 字段。
+
+### 事件（plugin.event）
+
+详见 [reference/EVENTS.md](reference/EVENTS.md)。
+
+```javascript
+event: 'message'             // 任意入站源
+event: 'onebot.message'      // 仅 protocol===onebot（内置选名，非保留字）
+event: 'telegram.message'    // 你自己的 protocol，任意字符串
+event: 'order.created'       // 入站 e.events 里声明的自由别名
+```
+
+详见 [reference/EVENTS.md](reference/EVENTS.md)。
 
 ---
 

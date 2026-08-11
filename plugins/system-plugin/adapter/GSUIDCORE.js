@@ -2,6 +2,7 @@
 Bot.adapter.push(
   new (class GSUIDCoreAdapter {
     id = "GSUIDCore"
+    protocol = "gsuid"
     name = "早柚核心(时雨崽)"
     path = this.id
 

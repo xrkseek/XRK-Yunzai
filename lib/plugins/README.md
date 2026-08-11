@@ -14,7 +14,8 @@ XRK-Yunzai 插件底层。与经典 Yunzai 的对照见 [docs/VS_YUNZAI.md](../.
 | 文件 | 标记 | 职责 |
 |------|------|------|
 | `plugin.js` | compat + ext | 基类（rule/task/context/handler）；工作流 API 为 ext |
-| `loader.js` | compat + ext | 扫描、分发、冷却、热更；device/stdin/extended 等为 ext |
+| `loader.js` | compat + ext | 扫描、分发、冷却、热更；caps / extended 等为 ext |
+| `event-match.js` | ext | plugin.event 匹配（protocol / 自由别名，无白名单） |
 | `runtime.js` | compat | `e.runtime`（getMysApi / render / Handler 等） |
 | `handler.js` | compat | `Handler.add\|del\|call\|callAll\|has` |
 | `config.js` | compat | `makeConfig()` → `config/<name>.yaml`，**禁止删除** |

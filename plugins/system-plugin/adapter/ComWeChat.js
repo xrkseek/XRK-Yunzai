@@ -4,6 +4,7 @@ import { ulid } from "ulid"
 /** [ext] 企业微信适配器 */
 Bot.adapter.push(new class ComWeChatAdapter {
   id = "WeChat"
+  protocol = "wechat"
   name = "ComWeChat"
   path = this.name
   echo = new Map

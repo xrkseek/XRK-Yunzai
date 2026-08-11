@@ -103,7 +103,7 @@ XRK:  node app.js|start.js → 引导 → 选端口 → Bot.run({ port })
 | 旁路节流 | 无 | **`bypassThrottle` [ext]** |
 | 扩展队列 | 少 | **`priority: 'extended'` [ext]** |
 | JSON 卡片抽链 | 弱 | **`extractJsonCardText` [ext]**（xml/json→`e.msg` 仍 compat） |
-| 事件订阅 | Bot.on | 同 + **`eventSubscribe` [ext]**（如 connect） |
+| 事件订阅 | Bot.on | 同 + 消息插件实例字段 **`eventSubscribe` [ext]**（`PluginsLoader.subscribeEvent` 按需桥接；**不是** events 里的 static） |
 
 ---
 
@@ -121,9 +121,10 @@ XRK:  node app.js|start.js → 引导 → 选端口 → Bot.run({ port })
 
 | 项 | TRSS | XRK |
 |----|------|-----|
-| events | 常固定 `lib/events/` | **`plugins/*/events/`**，可热更 **[compat 契约 / ext 布局]** |
-| 内置协议面 | OneBot、企微、GSUID、stdin、以及 Satori/Milky/OPQ 等（随版本） | OneBotv11、ComWeChat、GSUID、stdin、QBQBot 等 |
-| 加载 | Listener 一次加载 | events → API → adapters；可 watch / 解绑 |
+| events | 常固定 `lib/events/` | **`plugins/*/events/`**，`EventListener`，可热更 **[compat 契约 / ext 布局]** |
+| adapter | 协议适配器 | **`plugins/adapter/` 或 `plugins/*/adapter/`**：侧效 `Bot.adapter.push` + `load()` 挂 `Bot.wsf`；入站 `Bot.em(..., { adapter: id, ... })` |
+| 加载 | Listener 一次加载 | `Bot.loadAdapters` 导入 → `ListenerLoader.loadEvents` → API → `ListenerLoader.loadAdapters` 激活；events 可 watch |
+| 身份 | — | **`e.adapter` 恒为字符串 id**；协议对象在 `e.bot.adapter`；可选 **`e.caps`** 声明通道能力（见 ADAPTER_AND_ROUTING） |
 
 **不要假设协议集合完全对等**；第三方仍按 OneBot 等主流契约写。见 [ADAPTER_AND_ROUTING.md](./reference/ADAPTER_AND_ROUTING.md)。
 

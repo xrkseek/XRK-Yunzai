@@ -580,8 +580,17 @@ export class StdinHandler {
 
     const event = {
       adapter,
+      protocol: adapter,
       adapter_id: adapter,
       adapter_name: adapter === 'api' ? 'API适配器' : '标准输入适配器',
+      caps: {
+        skipPreCheck: true,
+        bypassLimit: true,
+        bypassBlack: true,
+        bypassOnlyReplyAt: true,
+        bypassPermission: true,
+        asMessage: true
+      },
       message_id: messageId,
       message_type: userInfo.message_type || "private",
       post_type: userInfo.post_type || "message",

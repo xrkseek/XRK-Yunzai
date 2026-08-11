@@ -33,7 +33,10 @@ export class Restart extends plugin {
     const uin = this._uin()
     await this.e.reply('开始执行重启，请稍等...')
 
-    const adapter = this.e?.adapter ?? (this.e?.post_type === 'device' ? 'device' : '')
+    const adapter = (typeof this.e?.adapter === 'string' && this.e.adapter)
+      || this.e?.adapter_id
+      || (this.e?.post_type === 'device' ? 'device' : '')
+      || ''
     const data = JSON.stringify({
       uin,
       isGroup: !!this.e.isGroup,

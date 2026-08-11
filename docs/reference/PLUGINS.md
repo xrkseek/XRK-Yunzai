@@ -13,7 +13,7 @@
 |------|------|
 | `constructor({ name?, dsc?, event?, priority?, task?, rule?, bypassThrottle?, handler?, namespace? })` | 保存配置并暴露给 PluginsLoader |
 | `name` | 插件名，默认 `"your-plugin"` |
-| `event` | 监听类型：message/notice 等 |
+| `event` | 监听类型：跨端 `message`；协议收窄 `onebot.message`（见 [EVENTS.md](./EVENTS.md)） |
 | `priority` | 规则优先级，数值越低越高 |
 | `rule` | `{ reg, fnc, log?, permission?, describe? }[]` |
 | `task` | `{ name, fnc, cron }` 定时任务 |

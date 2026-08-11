@@ -361,10 +361,17 @@ export default {
             deviceStore.set(id, device);
             if (Bot?.bots) Bot.bots[id] = { device_type: 'web', online: true, nickname: name, info: { device_name: name } };
             send(conn, { type: 'register_response', success: true, device: { device_id: id, device_type: device.device_type, device_name: device.device_name } });
-            Bot.em('connect.device', { self_id: id, adapter: 'device', device_id: id, sendReply: async (content) => {
-              const payload = await buildReplyPayload(content, id, Bot);
-              send(conn, payload);
-            } });
+            Bot.em('connect.device', {
+              self_id: id,
+              adapter: 'device',
+              protocol: 'device',
+              device_id: id,
+              caps: { skipOnlineMsg: true },
+              sendReply: async (content) => {
+                const payload = await buildReplyPayload(content, id, Bot);
+                send(conn, payload);
+              }
+            });
             return;
           }
 
@@ -394,6 +401,16 @@ export default {
             const event = {
               post_type: 'device',
               adapter: 'device',
+              protocol: 'device',
+              caps: {
+                skipPreCheck: true,
+                bypassLimit: true,
+                bypassBlack: true,
+                bypassOnlyReplyAt: true,
+                bypassPermission: true,
+                replyUnhandled: true,
+                asMessage: true
+              },
               event_type: 'message',
               device_id: deviceId,
               device_type: deviceInfo.device_type || 'web',

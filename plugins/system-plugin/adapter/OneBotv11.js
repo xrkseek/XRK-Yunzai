@@ -70,6 +70,8 @@ function gmlMemberDelete(map, userId) {
 Bot.adapter.push(
   new (class OneBotv11Adapter {
     id = "QQ"
+    /** plugin.event 协议命名空间：onebot.message / onebot.notice */
+    protocol = "onebot"
     name = "OneBotv11"
     path = this.name
     echo = new Map()

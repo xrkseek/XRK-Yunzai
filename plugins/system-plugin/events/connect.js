@@ -6,14 +6,18 @@ import path from 'path'
 import { FileUtils } from '../../../lib/utils/file-utils.js'
 import { resolveProjectPath, DATA_DIR } from "../../../lib/config/config-constants.js"
 
-/** [compat] connect；[ext] eventSubscribe 静态订阅 */
+/** [compat] connect — 仅由 ListenerLoader 绑定 Bot.on('connect') */
 const RESTART_KEY = 'Yz:restart'
 
-export default class connectEvent extends EventListener {
-  static eventSubscribe = {
-    connect: async function (e) { await new this().execute(e) }
-  }
+/** 事件上的适配器 id（字符串）；对象只应在 e.bot.adapter */
+function adapterId(e) {
+  if (typeof e?.adapter === 'string' && e.adapter) return e.adapter
+  if (e?.adapter_id) return String(e.adapter_id)
+  if (e?.bot?.adapter?.id) return String(e.bot.adapter.id)
+  return ''
+}
 
+export default class connectEvent extends EventListener {
   dataDir = resolveProjectPath(DATA_DIR)
 
   constructor() {
@@ -26,8 +30,9 @@ export default class connectEvent extends EventListener {
     const currentUin = e?.self_id || Bot.uin[0]
     if (!currentUin) return
 
+    const id = adapterId(e)
     const restart = await this.getRestartInfo(currentUin)
-    if (restart && (!restart.adapter || restart.adapter === e.adapter)) {
+    if (restart && (!restart.adapter || restart.adapter === id)) {
       await this.handleRestart(currentUin, restart, e)
     }
     await this.handleNormalStart(e)
@@ -45,7 +50,7 @@ export default class connectEvent extends EventListener {
 
   async handleNormalStart(e) {
     if (!cfg.bot.online_msg_exp) return
-    if (e.adapter === 'device') return
+    if (adapterId(e) === 'device' || e.caps?.skipOnlineMsg) return
     const key = `Yz:connect888Msg:${e.self_id}`
     if (await redis.get(key)) return
     redis.set(key, "1", { EX: cfg.bot.online_msg_exp * 60 })
@@ -54,7 +59,7 @@ export default class connectEvent extends EventListener {
 
   async handleRestart(currentUin, restart, e) {
     const time = ((Date.now() - restart.time) / 1000).toFixed(1)
-    const target = (e.adapter === 'device' && typeof e.sendReply === 'function')
+    const target = (adapterId(e) === 'device' && typeof e.sendReply === 'function')
       ? { sendMsg: (content) => Promise.resolve(e.sendReply(content)) }
       : (restart.isGroup ? Bot[currentUin].pickGroup(restart.id) : Bot[currentUin].pickUser(restart.id))
     await target.sendMsg(`重启成功，耗时 ${time} 秒`)
@@ -402,459 +407,116 @@ export default class connectEvent extends EventListener {
     const plugins = [...(stats?.plugins || [])].sort((a, b) => (b.loadTime || 0) - (a.loadTime || 0))
     const success = plugins.filter(p => p.success)
     const failed = plugins.filter(p => !p.success)
-    
     const packages = this.groupPluginsByPackage(success)
     const single = success.filter(p => !p.name.includes('/'))
-    
-    const fastest = success[success.length - 1]
+    const fastest = success.at(-1)
     const slowest = success[0]
-    
-    return `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plugin Load Report</title>
-  <style>
-    @font-face {
-      font-family: 'Genshin';
-      src: url('./fonts/Genshin.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
+    const avgMs = plugins.length ? (stats.totalLoadTime / plugins.length).toFixed(0) : '0'
+    const rate = plugins.length ? ((success.length / plugins.length) * 100).toFixed(0) : '0'
+    const slowCount = success.filter(p => p.loadTime > 100).length
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    const section = (title, count, body) => `
+      <section class="sec">
+        <div class="sec-h"><h2>${title}</h2><span class="badge">${count}</span></div>
+        ${body}
+      </section>`
 
-    body {
-      font-family: 'Genshin', -apple-system, 'Segoe UI', system-ui, sans-serif;
-      background: #0a0a0a;
-      width: 800px;
-      color: #fff;
-    }
+    const pkgBlocks = packages.map((pkg, i) => `
+      <div class="pkg c${i % 4}">
+        <div class="pkg-h"><b>${pkg.name}</b><span>${pkg.plugins.length} · ${pkg.totalTime.toFixed(0)}ms</span></div>
+        <div class="list">${pkg.plugins.map(p => this.renderPlugin(p)).join('')}</div>
+      </div>`).join('')
 
-    .container {
-      background: linear-gradient(to bottom, #0f0f0f, #1a1a1a);
-      min-height: 100vh;
-    }
+    const failBlocks = failed.map(p => `
+      <div class="row fail">
+        <div><div class="name">${p.name}</div>${p.error ? `<div class="err">${p.error}</div>` : ''}</div>
+        <span class="ms slow">${p.loadTime.toFixed(1)}ms</span>
+      </div>`).join('')
 
-    .header {
-      padding: 48px 32px;
-      text-align: center;
-      background: linear-gradient(180deg, rgba(99, 102, 241, 0.1), transparent);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .header h1 {
-      font-size: 36px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #6366f1, #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
-      letter-spacing: -0.5px;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      color: #6b7280;
-      font-weight: 500;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      padding: 32px;
-    }
-
-    .stat-card {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      padding: 20px;
-      text-align: center;
-    }
-
-    .stat-icon {
-      font-size: 24px;
-      margin-bottom: 12px;
-    }
-
-    .stat-value {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 4px;
-      background: linear-gradient(135deg, #6366f1, #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .stat-label {
-      font-size: 13px;
-      color: #9ca3af;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .highlights {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      padding: 0 32px 32px;
-    }
-
-    .highlight-card {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      padding: 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .highlight-card.fastest {
-      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), transparent);
-      border-color: rgba(34, 197, 94, 0.3);
-    }
-
-    .highlight-card.slowest {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-
-    .highlight-info h3 {
-      font-size: 12px;
-      color: #9ca3af;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-      letter-spacing: 0.5px;
-    }
-
-    .highlight-name {
-      font-size: 16px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .highlight-time {
-      font-size: 28px;
-      font-weight: 700;
-    }
-
-    .fastest .highlight-time {
-      color: #22c55e;
-    }
-
-    .slowest .highlight-time {
-      color: #ef4444;
-    }
-
-    .section {
-      padding: 0 32px 32px;
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .section-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #fff;
-    }
-
-    .section-count {
-      font-size: 14px;
-      color: #9ca3af;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 4px 12px;
-      border-radius: 999px;
-    }
-
-    .package-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      margin-bottom: 16px;
-      overflow: hidden;
-    }
-
-    .package-header {
-      padding: 16px 20px;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .package-name {
-      font-size: 16px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .package-meta {
-      display: flex;
-      gap: 12px;
-      font-size: 13px;
-      color: #9ca3af;
-    }
-
-    .plugin-list {
-      padding: 12px;
-    }
-
-    .plugin-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 8px;
-      margin-bottom: 8px;
-    }
-
-    .plugin-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .plugin-item.failed {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-    }
-
-    .plugin-name {
-      font-size: 14px;
-      color: #e5e7eb;
-    }
-
-    .plugin-time {
-      font-size: 13px;
-      font-weight: 600;
-      padding: 4px 12px;
-      border-radius: 999px;
-    }
-
-    .time-fast {
-      color: #22c55e;
-      background: rgba(34, 197, 94, 0.15);
-    }
-
-    .time-medium {
-      color: #f59e0b;
-      background: rgba(245, 158, 11, 0.15);
-    }
-
-    .time-slow {
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.15);
-    }
-
-    .error-msg {
-      font-size: 12px;
-      color: #ef4444;
-      margin-top: 4px;
-    }
-
-    .summary {
-      margin: 32px;
-      padding: 32px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1));
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      text-align: center;
-    }
-
-    .summary-item h4 {
-      font-size: 13px;
-      color: #9ca3af;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .summary-value {
-      font-size: 28px;
-      font-weight: 700;
-      background: linear-gradient(135deg, #6366f1, #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>插件加载报告</h1>
-      <div class="subtitle">Plugin Performance Report</div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">⏱️</div>
-        <div class="stat-value">${(stats.totalLoadTime / 1000).toFixed(2)}</div>
-        <div class="stat-label">总耗时(秒)</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">✅</div>
-        <div class="stat-value">${success.length}</div>
-        <div class="stat-label">成功加载</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">❌</div>
-        <div class="stat-value">${failed.length}</div>
-        <div class="stat-label">失败数量</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">📊</div>
-        <div class="stat-value">${stats.taskCount || 0}</div>
-        <div class="stat-label">定时任务</div>
-      </div>
-    </div>
-
-    ${success.length > 0 ? `
-      <div class="highlights">
-        <div class="highlight-card fastest">
-          <div class="highlight-info">
-            <h3>最快加载</h3>
-            <div class="highlight-name">${fastest?.name || 'N/A'}</div>
-          </div>
-          <div class="highlight-time">${fastest?.loadTime.toFixed(1) || '0'}ms</div>
-        </div>
-        <div class="highlight-card slowest">
-          <div class="highlight-info">
-            <h3>最慢加载</h3>
-            <div class="highlight-name">${slowest?.name || 'N/A'}</div>
-          </div>
-          <div class="highlight-time">${slowest?.loadTime.toFixed(1) || '0'}ms</div>
-        </div>
-      </div>
-    ` : ''}
-
-    ${packages.length > 0 ? `
-      <div class="section">
-        <div class="section-header">
-          <h2 class="section-title">📄 单JS</h2>
-          <span class="section-count">${packages.length} 个</span>
-        </div>
-        ${packages.map(pkg => `
-          <div class="package-card">
-            <div class="package-header">
-              <div class="package-name">${pkg.name}</div>
-              <div class="package-meta">
-                <span>📋 ${pkg.plugins.length} 个</span>
-                <span>⏱️ ${pkg.totalTime.toFixed(0)}ms</span>
-              </div>
-            </div>
-            <div class="plugin-list">
-              ${pkg.plugins.map(p => this.renderPlugin(p)).join('')}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    ` : ''}
-
-    ${single.length > 0 ? `
-      <div class="section">
-        <div class="section-header">
-          <h2 class="section-title">📦 插件包</h2>
-          <span class="section-count">${single.length} 个</span>
-        </div>
-        <div class="plugin-list">
-          ${single.map(p => this.renderPlugin(p)).join('')}
-        </div>
-      </div>
-    ` : ''}
-
-    ${failed.length > 0 ? `
-      <div class="section">
-        <div class="section-header">
-          <h2 class="section-title">❌ 加载失败</h2>
-          <span class="section-count">${failed.length} 个</span>
-        </div>
-        <div class="plugin-list">
-          ${failed.map(p => `
-            <div class="plugin-item failed">
-              <div>
-                <div class="plugin-name">${p.name}</div>
-                ${p.error ? `<div class="error-msg">${p.error}</div>` : ''}
-              </div>
-              <div class="plugin-time time-slow">${p.loadTime.toFixed(1)}ms</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    ` : ''}
-
-    <div class="summary">
-      <div class="summary-grid">
-        <div class="summary-item">
-          <h4>平均耗时</h4>
-          <div class="summary-value">
-            ${plugins.length ? (stats.totalLoadTime / plugins.length).toFixed(0) : '0'}ms
-          </div>
-        </div>
-        <div class="summary-item">
-          <h4>成功率</h4>
-          <div class="summary-value">
-            ${plugins.length ? ((success.length / plugins.length) * 100).toFixed(0) : '0'}%
-          </div>
-        </div>
-        <div class="summary-item">
-          <h4>慢速插件</h4>
-          <div class="summary-value">
-            ${success.filter(p => p.loadTime > 100).length}个
-          </div>
-        </div>
-      </div>
-    </div>
+    return `<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>插件加载报告</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:800px;font-family:"Trebuchet MS","Segoe UI",sans-serif;color:#111;background:#FFF8E7}
+.wrap{position:relative;overflow:hidden;padding:28px 28px 36px;background:
+  radial-gradient(circle 14px at 40px 40px,#FF6B6B 98%,transparent) 0 0/80px 80px,
+  radial-gradient(circle 8px at 70px 70px,#4ECDC4 98%,transparent) 40px 40px/80px 80px,
+  repeating-linear-gradient(45deg,#FFE66D 0 6px,transparent 6px 18px) 560px 12px/120px 120px no-repeat,
+  #FFF8E7}
+.wrap::before,.wrap::after{content:"";position:absolute;pointer-events:none;z-index:0}
+.wrap::before{width:90px;height:90px;border:5px solid #111;border-radius:50%;top:-20px;right:48px;background:#FF8FAB}
+.wrap::after{width:0;height:0;border-left:36px solid transparent;border-right:36px solid transparent;border-bottom:62px solid #4ECDC4;bottom:24px;left:18px;filter:drop-shadow(4px 4px 0 #111)}
+.card{position:relative;z-index:1;background:#fff;border:4px solid #111;box-shadow:10px 10px 0 #111;padding:22px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;padding-bottom:14px;border-bottom:4px solid #111}
+.head h1{font-size:30px;letter-spacing:-.5px;line-height:1.1}
+.head h1 span{display:inline-block;background:#FFE66D;border:3px solid #111;padding:2px 10px;transform:rotate(-2deg);box-shadow:3px 3px 0 #111}
+.meta{font-size:13px;font-weight:700;text-align:right;line-height:1.5}
+.meta b{background:#4ECDC4;border:2px solid #111;padding:1px 6px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{border:3px solid #111;padding:14px 10px;text-align:center;box-shadow:4px 4px 0 #111}
+.stat:nth-child(1){background:#FFE66D}.stat:nth-child(2){background:#4ECDC4}.stat:nth-child(3){background:#FF8FAB}.stat:nth-child(4){background:#A78BFA}
+.stat .v{font-size:28px;font-weight:800;line-height:1.1}.stat .l{font-size:12px;font-weight:700;margin-top:4px}
+.hl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.hl .box{border:3px solid #111;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;box-shadow:4px 4px 0 #111}
+.hl .fast{background:#C8F7C5}.hl .slow{background:#FFD6D6}
+.hl small{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;margin-bottom:2px}
+.hl .n{font-size:14px;font-weight:700;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hl .t{font-size:22px;font-weight:800}
+.sec{margin-top:18px}.sec-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sec-h h2{font-size:18px;background:#111;color:#FFE66D;padding:4px 12px;transform:rotate(-1deg)}
+.badge{font-size:12px;font-weight:800;border:2px solid #111;background:#fff;padding:2px 8px;box-shadow:2px 2px 0 #111}
+.pkg{border:3px solid #111;margin-bottom:12px;box-shadow:5px 5px 0 #111;overflow:hidden}
+.pkg.c0{background:#FFF3B0}.pkg.c1{background:#CFFAFE}.pkg.c2{background:#FCE7F3}.pkg.c3{background:#EDE9FE}
+.pkg-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:3px solid #111;font-size:14px;font-weight:700;background:rgba(255,255,255,.55)}
+.list{padding:8px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;border:2px solid #111;background:#fff}
+.row:last-child{margin-bottom:0}.row.fail{background:#FFE4E6}
+.name{font-size:13px;font-weight:700}.err{font-size:11px;color:#B91C1C;margin-top:2px;font-weight:600}
+.ms{font-size:12px;font-weight:800;border:2px solid #111;padding:2px 8px;white-space:nowrap}
+.ms.fast{background:#86EFAC}.ms.mid{background:#FDE68A}.ms.slow{background:#FCA5A5}
+</style>
+</head><body><div class="wrap"><div class="card">
+  <div class="head">
+    <h1><span>插件加载报告</span></h1>
+    <div class="meta">XRK-Yunzai<br><b>${rate}%</b> 成功 · 均 <b>${avgMs}ms</b> · 慢速 <b>${slowCount}</b></div>
   </div>
-</body>
-</html>`
+  <div class="stats">
+    <div class="stat"><div class="v">${(stats.totalLoadTime / 1000).toFixed(2)}</div><div class="l">总耗时(秒)</div></div>
+    <div class="stat"><div class="v">${success.length}</div><div class="l">成功</div></div>
+    <div class="stat"><div class="v">${failed.length}</div><div class="l">失败</div></div>
+    <div class="stat"><div class="v">${stats.taskCount || 0}</div><div class="l">定时任务</div></div>
+  </div>
+  ${success.length ? `
+  <div class="hl">
+    <div class="box fast"><div><small>最快</small><div class="n">${fastest?.name || '-'}</div></div><div class="t">${fastest?.loadTime.toFixed(1) || '0'}ms</div></div>
+    <div class="box slow"><div><small>最慢</small><div class="n">${slowest?.name || '-'}</div></div><div class="t">${slowest?.loadTime.toFixed(1) || '0'}ms</div></div>
+  </div>` : ''}
+  ${packages.length ? section('插件包', `${packages.length} 个`, pkgBlocks) : ''}
+  ${single.length ? section('单 JS', `${single.length} 个`, `<div class="list">${single.map(p => this.renderPlugin(p)).join('')}</div>`) : ''}
+  ${failed.length ? section('加载失败', `${failed.length} 个`, `<div class="list">${failBlocks}</div>`) : ''}
+</div></div></body></html>`
   }
 
   renderPlugin(plugin) {
     const name = plugin.name.includes('/') ? plugin.name.split('/').pop() : plugin.name
-    const timeClass = plugin.loadTime < 10 ? 'time-fast' : 
-                     plugin.loadTime < 50 ? 'time-medium' : 'time-slow'
-    return `
-      <div class="plugin-item">
-        <div class="plugin-name">${name}</div>
-        <div class="plugin-time ${timeClass}">${plugin.loadTime.toFixed(1)}ms</div>
-      </div>
-    `
+    const tone = plugin.loadTime < 10 ? 'fast' : plugin.loadTime < 50 ? 'mid' : 'slow'
+    return `<div class="row"><div class="name">${name}</div><span class="ms ${tone}">${plugin.loadTime.toFixed(1)}ms</span></div>`
   }
 
   groupPluginsByPackage(plugins) {
-    const packages = {}
-    plugins.filter(p => p.name.includes('/')).forEach(p => {
-      const packageName = p.name.split('/')[0]
-      if (!packages[packageName]) {
-        packages[packageName] = { name: packageName, plugins: [], totalTime: 0 }
+    const map = new Map()
+    for (const p of plugins) {
+      if (!p.name.includes('/')) continue
+      const name = p.name.split('/')[0]
+      let pkg = map.get(name)
+      if (!pkg) {
+        pkg = { name, plugins: [], totalTime: 0 }
+        map.set(name, pkg)
       }
-      packages[packageName].plugins.push(p)
-      packages[packageName].totalTime += p.loadTime
-    })
-    return Object.values(packages).sort((a, b) => b.totalTime - a.totalTime)
+      pkg.plugins.push(p)
+      pkg.totalTime += p.loadTime
+    }
+    return [...map.values()].sort((a, b) => b.totalTime - a.totalTime)
   }
 }
