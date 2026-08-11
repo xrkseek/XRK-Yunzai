@@ -102,11 +102,11 @@ node app   # 交互菜单；启动服务时检查依赖
 | 方式 | 步骤 | 适用场景 |
 |------|------|---------|
 | 原生 Node | `node app` | 开发/调试最快捷；启动服务时检查依赖与 Redis。 |
-| Docker Compose | `docker-compose up -d` | 推荐；可一键启 Redis 与主程序、Volume 保留数据。 |
-| Dockerfile | `docker build -t xrk-yunzai:latest .` → `docker run ...` | 适合 CI/CD、自托管。 |
+| Docker Compose | `docker compose up -d --build` | 推荐；Redis + 主程序、Volume 持久化。须 **Compose V2**（`docker compose`，非旧 `docker-compose`）。 |
+| Dockerfile | `docker build -t xrk-yunzai:latest .` → `docker run ...` | 适合 CI/CD；入口须 `app.js server <port>`。 |
 | PM2 | `pm2 start app.js --name xrk-yunzai` | 持续运行、日志切割、自动拉起。 |
 
-> **提示**：容器化部署务必映射 `data/ config/ plugins/ logs/ resources/`，首次登录可本地完成后再挂载。
+> **提示**：映射 `data/ config/ plugins/ logs/ resources/`；容器内通过 `REDIS_HOST`（Compose 默认 `redis`）连 Redis，勿写死 `127.0.0.1`。健康检查：`GET /health`。
 
 ---
 

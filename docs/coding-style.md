@@ -1,7 +1,8 @@
 # 底层与插件写法规范
 
 > **读者**：在 `lib/`、`plugins/` 写代码的开发者与 AI  
-> **关联**：[runtime-surface.md](runtime-surface.md) · [base-classes.md](base-classes.md) · [VS_YUNZAI.md](VS_YUNZAI.md)  
+> **入口**：[AGENTS.md](../AGENTS.md)  
+> **关联**：[runtime-surface.md](runtime-surface.md) · [base-classes.md](base-classes.md) · [EVENTS.md](reference/EVENTS.md) · [VS_YUNZAI.md](VS_YUNZAI.md)  
 > **规则副本**：`.cursor/rules/xrk-dev-requirements.mdc` · skill **`xrk-coding-style`**
 
 **原则**：业务放 `plugins/`（**含内置 `system-plugin/`**）；基础设施放 `lib/`；能复用 `FileUtils` / `ObjectUtils` 就不在业务里再写一遍。

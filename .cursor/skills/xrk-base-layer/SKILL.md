@@ -7,6 +7,7 @@ description: 开发或审计 XRK-Yunzai 底层基类、加载器、工厂与工�
 
 ## 权威入口
 
+- **地图**：`AGENTS.md`（改 `lib/` / 二次开发行）
 - **写法**：`docs/coding-style.md` · **挂载**：`docs/runtime-surface.md`
 - **短契约**：`docs/base-classes.md` · **详述**：`docs/BASE_CLASSES.md`
 - **测试**：`docs/框架测试指南.md` · skill `xrk-framework-tests`

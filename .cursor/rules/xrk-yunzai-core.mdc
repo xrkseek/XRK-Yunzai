@@ -5,6 +5,8 @@ alwaysApply: true
 
 # XRK-Yunzai 核心规范
 
+开发入口地图（人 / AI）：仓库根 `AGENTS.md`。技能索引：`.cursor/skills/SKILL_INDEX.md`。
+
 ## 项目定位
 
 - XRK-Yunzai 是基于 QQ/OneBot 的**多平台 Agent** 框架，提供插件、HTTP API、AI 工作流、CommonConfig、前端控制台等能力；业务代码放在 `plugins/<插件名>/` 下，基础设施与基类在 `lib/`。

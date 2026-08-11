@@ -7,8 +7,9 @@ description: 编写或审查 lib/plugins 代码时的写法规范（全局裸名
 
 ## 权威入口
 
+- **地图**：`AGENTS.md`
 - **主文档**：`docs/coding-style.md`（速查表 + 分节）
-- **挂载面**：`docs/runtime-surface.md`
+- **挂载面**：`docs/runtime-surface.md` · **事件**：`docs/reference/EVENTS.md`
 - **短契约**：`docs/base-classes.md`
 - **规则**：`.cursor/rules/xrk-dev-requirements.mdc`、`xrk-yunzai-core.mdc`
 

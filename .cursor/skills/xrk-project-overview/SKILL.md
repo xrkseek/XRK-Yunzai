@@ -7,8 +7,9 @@ description: 需要从整体理解 XRK-Yunzai 的架构、目录、运行流程�
 
 ## 权威入口
 
+- **总地图**：`AGENTS.md`（分角色：插件 / 改框架 / AI）
 - **写法**：`docs/coding-style.md` · **挂载**：`docs/runtime-surface.md`
-- **架构**：`docs/ARCHITECTURE.md` · **技术栈**：`docs/TECH_STACK.md`
+- **架构**：`docs/ARCHITECTURE.md` · **对照**：`docs/VS_YUNZAI.md`
 - **基类短契约**：`docs/base-classes.md`
 - **内置插件**：`plugins/system-plugin/SYSTEM-PLUGIN.md`
 - **技能索引**：`.cursor/skills/SKILL_INDEX.md`

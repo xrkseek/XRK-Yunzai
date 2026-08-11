@@ -1,4 +1,7 @@
-version: '3.8'
+# XRK-Yunzai：app + Redis
+# docker compose up -d --build
+
+name: xrk-yunzai
 
 services:
   xrk-yunzai:
@@ -8,51 +11,53 @@ services:
     container_name: xrk-yunzai
     restart: unless-stopped
     environment:
-      - NODE_ENV=production
-      - DISABLE_CONSOLE=true
-      - USE_FILE_LOG=true
-      - DEBUG=false
-      - XRK_SERVER_PORT=3000
-      - NODE_OPTIONS=--no-warnings --no-deprecation --max-old-space-size=1024
-      # Redis 连接配置（自动连接到 redis 服务）
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
+      NODE_ENV: production
+      DISABLE_CONSOLE: "true"
+      USE_FILE_LOG: "true"
+      DEBUG: "false"
+      XRK_SERVER_PORT: "3000"
+      NODE_OPTIONS: "--no-warnings --no-deprecation --max-old-space-size=1024"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
     ports:
       - "3000-3100:3000-3100"
     volumes:
-      # 数据持久化
       - ./data:/app/data
       - ./logs:/app/logs
       - ./config:/app/config
       - ./plugins:/app/plugins
       - ./resources:/app/resources
       - ./renderers:/app/renderers
-      # 排除 node_modules 以提升性能
       - /app/node_modules
     networks:
       - xrk-network
     depends_on:
       redis:
         condition: service_healthy
+        restart: true
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 2048M
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  # Redis 服务（必需，用于 AI 记忆、限流与会话缓存等）
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: xrk-redis
     restart: unless-stopped
     command: >
@@ -67,15 +72,14 @@ services:
       - redis-data:/data
     networks:
       - xrk-network
-    ports:
-      - "6379:6379"  # 可选：暴露端口以便外部访问
+    # ports: ["6379:6379"]
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 128M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -83,6 +87,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
 
 networks:
   xrk-network:

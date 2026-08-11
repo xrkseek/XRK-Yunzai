@@ -1,0 +1,25 @@
+# build context 排除项
+.git
+.github
+.cursor
+.vscode
+.idea
+**/node_modules
+**/dist
+**/.turbo
+**/.cache
+logs
+data/**
+!data/fonts/
+!data/fonts/**
+*.log
+*.md
+!README.md
+.env
+.env.*
+!.env.example
+*.code-workspace
+agent-transcripts
+coverage
+tmp
+temp

@@ -268,10 +268,8 @@ class Bootstrap {
 
   async run() {
     try {
-      // 菜单：只做环境校验，进菜单要快
-      // server（含 Ctrl+C 后父进程再拉起）：第一时间查/补依赖
-      const isServer = process.argv[2] === 'server';
-      if (isServer) {
+      const { isServerBootstrap } = await import('./lib/utils/cli-args.js');
+      if (isServerBootstrap()) {
         await this.initializeRuntime();
       } else {
         await validateEnvironment();

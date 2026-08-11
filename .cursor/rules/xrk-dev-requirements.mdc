@@ -5,6 +5,8 @@ alwaysApply: true
 
 # 开发需求与约定
 
+入口：`AGENTS.md` · 写法全文：`docs/coding-style.md`。
+
 ## Constructor 内不要定义易变状态
 
 - **禁止**在 `constructor` 里定义缓存/状态容器（如 `this.cache = new Map()`、`this.xxx = {}`）。

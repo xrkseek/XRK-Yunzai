@@ -7,7 +7,9 @@ description: 在 XRK-Yunzai 中开发或修改插件时使用；涉及 plugins/ 
 
 ## 权威入口
 
-- **写法**：`docs/coding-style.md` · **挂载**：`docs/runtime-surface.md`
+- **地图**：`AGENTS.md`（插件作者行）
+- **写法**：`docs/coding-style.md` · **事件**：`docs/reference/EVENTS.md`
+- **挂载**：`docs/runtime-surface.md`
 - **短契约**：`docs/base-classes.md`（plugin 段）· **详述**：`docs/PLUGIN_BASE_CLASS.md`
 - **基类**：`lib/plugins/plugin.js` · **加载**：`lib/plugins/loader.js`
 
@@ -68,11 +70,12 @@ export default class MyPlugin extends plugin {
 
 1. 优先：`this.callWorkflow('chat', { question }, { e })`
 2. 并行：`this.callWorkflows([...], sharedParams, { e })`
-3. 低层：`this.getStream('chat')?.execute(e, question, config)`
+3. 低层：`this.getWorkflow('chat')?.execute(e, question, config)`
 
 ## Rule 匹配
 
-`event` → `reg` → `permission` → `fnc`；返回 `false` 继续下一条。
+`event` → `reg` → `permission` → `fnc`；返回 `false` 继续下一条。  
+`event: 'message'` = 全通道；`'onebot.message'` = 仅 `e.protocol === 'onebot'`（详见 EVENTS.md）。
 
 ## 常见陷阱
 
@@ -80,6 +83,7 @@ export default class MyPlugin extends plugin {
 - 在 constructor 内创建 `this.cache = new Map()`
 - 业务层直接使用 `fs.existsSync`
 - 工作流文件误放到 `streams/`（Loader 不扫描）
+- 把文档示例协议名当成框架「必须注册」的保留字
 
 ## 参考
 

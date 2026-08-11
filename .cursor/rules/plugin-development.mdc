@@ -6,11 +6,14 @@ alwaysApply: false
 
 # 插件开发
 
+入口地图：[AGENTS.md](../../AGENTS.md) · 事件语义：[docs/reference/EVENTS.md](../../docs/reference/EVENTS.md) · skill：`xrk-plugin-development`。
+
 ## 基类与结构
 
 - 继承 `lib/plugins/plugin.js`；`import plugin from '../../lib/plugins/plugin.js'`。
 - constructor 仅 `super({ name, dsc, event, priority, rule, ... })`；**禁止**在 constructor 内 `new Map()` 等状态容器，用**类字段**。
 - 消息处理 `async fnc(e)`；回复用 `this.reply()` 或 `e.reply()`。
+- **event**：跨端用 `'message'`；仅 OneBot 等协议用 `'onebot.message'`（或任意 `'<protocol>.message'` / `e.events`）；框架无协议注册表白名单。
 
 ## 全局与工具
 

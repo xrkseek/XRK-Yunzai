@@ -101,9 +101,9 @@ Redis 连接策略：
 
 | 文件 | 描述 |
 |------|------|
-| `docker-compose.yml` | Node + Redis 一键启动，包含 Volume 与健康检查。 |
-| `Dockerfile` | 多阶段构建，便于 CI/CD。 |
-| `docker.sh` | Linux 快速部署脚本。 |
+| `docker-compose.yml` | Node + Redis（`depends_on: service_healthy`）；`docker compose up -d --build`。 |
+| `Dockerfile` | `node:24-alpine` + 系统 Chromium；入口 `app.js server $XRK_SERVER_PORT`。 |
+| `docker.sh` | 容器内非交互启动封装。 |
 | `debug.js` | 本地调试入口，可禁用某些模块。 |
 | `pnpm-workspace.yaml` | 工作区配置。 |
 
