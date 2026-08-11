@@ -438,8 +438,9 @@ export default class connectEvent extends EventListener {
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>插件加载报告</title>
 <style>
+@font-face{font-family:'Genshin';src:url('./fonts/Genshin.ttf') format('truetype');font-weight:normal;font-style:normal}
 *{margin:0;padding:0;box-sizing:border-box}
-body{width:800px;font-family:"Trebuchet MS","Segoe UI",sans-serif;color:#111;background:#FFF8E7}
+body{width:800px;font-family:'Genshin',-apple-system,'Segoe UI',system-ui,sans-serif;color:#111;background:#FFF8E7}
 .wrap{position:relative;overflow:hidden;padding:28px 28px 36px;background:
   radial-gradient(circle 14px at 40px 40px,#FF6B6B 98%,transparent) 0 0/80px 80px,
   radial-gradient(circle 8px at 70px 70px,#4ECDC4 98%,transparent) 40px 40px/80px 80px,
